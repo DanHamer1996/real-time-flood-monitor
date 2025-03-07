@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Time Flood Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet"/>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+</head>
+<body>
+
+<div class="container mt-5">
+    <h2>Real Time Flood Monitor</h2>
+    <select id="stationSelect" class="form-control" style="width: 100%" disabled>
+        <option value="">Select a Measurement Station...</option>
+    </select>
+</div>
+
+<div class="container mt-5">
+    <canvas id="lineChart" width="400" height="200"></canvas>
+    <div id="tableContainer" class="table-responsive d-none">
+        <table id="dataTable" class="table table-bordered table-striped table-hover" disabled>
+            <thead>
+            <tr>
+                <th>Datetime</th>
+                <th>Measurement Type</th>
+                <th>Reading</th>
+            </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const selectBoxId = '#stationSelect'
+    $(document).ready(function () {
+        // Populate the select dropdown with all available measurement stations via the API
+        $.ajax({
+            url: '{% url "api_flood_monitor-list_stations" %}',
+            method: 'GET',
+            success: function (data) {
+                data.data.forEach(function (station) {
+                    $(selectBoxId).append('<option value="' + station.id + '">' + station.value + '</option>');
+                });
+                $(selectBoxId).prop('disabled', false);
+                $(selectBoxId).select2({
+                    placeholder: "Select a Measurement Station",
+                    allowClear: true
+                });
+            }
+        });
+    })
+
+    let myChart = null;
+
+    $(document).ready(function () {
+            // Populate the chart and associated table with the selected measurement stations readings for the past
+            // 24 hours
+            $(selectBoxId).change(function () {
+                    var stationId = $(this).val()
+                    if (stationId) {
+                        fetch(`{% url "api_flood_monitor-list" %}?station_id=${stationId}`).then(response => response.json())
+                            .then(data => {
+                                const chartData = data.data
+
+                                const measure_types = [...new Set(chartData.map(item => item.measure_type))];
+
+                                const groupedData = measure_types.reduce((acc, measure_type) => {
+                                    acc[measure_type] = chartData.filter(item => item.measure_type === measure_type);
+                                    return acc;
+                                }, {});
+
+                                const datasets = measure_types.map(measure_type => {
+                                    return {
+                                        label: measure_type, // Label for the dataset
+                                        data: groupedData[measure_type].map(item => item.value),
+                                        borderColor: getRandomColor(),
+                                        fill: false,
+                                        tension: 0.1
+                                    };
+                                });
+
+                                const labels = groupedData[measure_types].map(item => item.datetime);
+
+                                // Destroy the existing chart before creating a new one
+                                if (myChart) {
+                                    myChart.destroy();
+                                }
+
+                                const ctx = document.getElementById('lineChart').getContext('2d');
+                                myChart = new Chart(ctx, {
+                                    type: 'line',
+                                    data: {
+                                        labels: labels,
+                                        datasets: datasets
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        scales: {
+                                            x: {
+                                                type: 'category',
+                                                title: {
+                                                    display: true,
+                                                    text: 'Datetime'
+                                                }
+                                            },
+                                            y: {
+                                                title: {
+                                                    display: true,
+                                                    text: 'Reading'
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                                updateTable(chartData);
+                            })
+                            .catch(error => console.error('Error fetching data:', error))
+                    }
+                }
+            )
+        }
+    )
+
+    function getRandomColor() {
+        // Used to generate random colour for line chart
+        const letters = '0123456789ABCDEF'
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)]
+        }
+        return color;
+    }
+
+    function updateTable(data) {
+        // Used to update the associated data table on form submission
+        const tableContainer = document.querySelector("#tableContainer"),
+            tableBody = document.querySelector("#dataTable tbody")
+        tableBody.innerHTML = ""
+        if (data.length > 0) {
+            tableContainer.classList.remove("d-none")
+        } else {
+            tableContainer.classList.add("d-none")
+        }
+
+        data.forEach(item => {
+            const row = document.createElement("tr");
+            row.innerHTML = `<td>${item.datetime}</td><td>${item.measure_type}</td><td>${item.value}</td>`;
+            tableBody.appendChild(row);
+        });
+    }
+
+</script>
+
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet"/>
+
+<!-- jQuery (Select2 depends on jQuery) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+
+
+</body>
+</html>

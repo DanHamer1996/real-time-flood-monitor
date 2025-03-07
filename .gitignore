@@ -1,0 +1,27 @@
+# Byte-compiled / compiled files
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environment
+venv/
+env/
+*.env
+
+# Django-specific
+*.log
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+static/
+
+# MacOS and Linux system files
+.DS_Store
+*.~undo-tree~
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
