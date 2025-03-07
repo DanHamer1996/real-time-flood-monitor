@@ -16,7 +16,7 @@ Ensure you have the following installed:
 
 1. **Clone the repository**
    ```sh
-   git clone [https://github.com/<url>](https://github.com/DanHamer1996/real-time-flood-monitor.git)
+   git clone https://github.com/DanHamer1996/real-time-flood-monitor.git
    cd real-time-flood-monitor
    ```
 
